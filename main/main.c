@@ -28,6 +28,7 @@ const char* index_html =
 "<body>"
 "<h1>¡Hola Mundo desde ESP32!</h1>"
 "<p>Servidor web funcionando correctamente</p>"
+"<p>Proyecto ESP32</p>"
 "</body>"
 "</html>";
 
