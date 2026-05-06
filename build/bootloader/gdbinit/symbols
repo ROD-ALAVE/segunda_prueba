@@ -1,0 +1,9 @@
+
+
+# Load bootloader symbols
+set confirm off
+    # Bootloader elf was not found
+set confirm on
+
+# Load application symbols
+file C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba/build/bootloader/bootloader.elf

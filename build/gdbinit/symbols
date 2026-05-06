@@ -1,0 +1,9 @@
+
+
+# Load bootloader symbols
+set confirm off
+    add-symbol-file C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba/build/bootloader/bootloader.elf
+set confirm on
+
+# Load application symbols
+file C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba/build/app-template.elf
