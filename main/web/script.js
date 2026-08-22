@@ -14,16 +14,26 @@ async function obtenerIP() {
     }
 }
 
-// Controlar salidas digitales (LED en GPIO 2)
+// Controlar salidas digitales (LED en GPIO 2 y GPIO 4)
 async function controlSalida(salida, estado) {
-    // Tu JS estaba enviando GPIO 2 y 4. Nosotros solo tenemos el GPIO 2 como salida.
-    const gpio = 2; 
+    // Mapear nombres a GPIOs
+    const gpioMap = {
+        'led': 2,    // GPIO2
+        'led4': 4    // GPIO4
+    };
+    
+    const gpio = gpioMap[salida];
+    if (!gpio) {
+        console.error('Salida no válida:', salida);
+        return;
+    }
+    
     const value = estado === 'on' ? 1 : 0;
 
     try {
-        // El C espera /control?led=1 o /control?led=0
-        const response = await fetch(`/control?led=${value}`);
-        const text = await response.text(); // El C devuelve texto plano, no JSON
+        // El C espera /control?led=1 o /control?led4=1
+        const response = await fetch(`/control?${salida}=${value}`);
+        const text = await response.text();
 
         if (text.includes("actualizado")) {
             actualizarUI(salida, value);

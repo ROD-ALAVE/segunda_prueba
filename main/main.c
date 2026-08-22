@@ -12,9 +12,11 @@
 #include "esp_event.h"
 #include "nvs_flash.h"
 #include "esp_http_server.h"
+#include <lwip/inet.h>
 
 // --- Definición de pines ---
 #define LED_PIN             2
+#define LED_PIN4             4
 #define INPUT_DIG_1         12
 #define INPUT_DIG_2         13
 #define INPUT_ANALOG        34
@@ -98,6 +100,13 @@ static esp_err_t control_handler(httpd_req_t *req)
             httpd_resp_sendstr(req, "LED actualizado");
             return ESP_OK;
         }
+        // Controlar GPIO 4
+		if (httpd_query_key_value(query, "led4", param, sizeof(param)) == ESP_OK) {
+		    int state = atoi(param);
+		    gpio_set_level(LED_PIN4, state ? 1 : 0);
+		    httpd_resp_sendstr(req, "LED4 actualizado");
+		    return ESP_OK;
+		}
 
         // Controlar DAC
         if (httpd_query_key_value(query, "dac", param, sizeof(param)) == ESP_OK) {
@@ -179,6 +188,7 @@ static void start_webserver(void)
 {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.max_req_hdr_len = 4096;
 
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &root);
@@ -214,6 +224,17 @@ void app_main(void)
     esp_event_loop_create_default();
     esp_netif_create_default_wifi_sta();
     
+     // ====== AQUÍ: CONFIGURACIÓN IP ESTÁTICA ======
+    esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    if (netif) {
+        esp_netif_ip_info_t ip_info;
+        IP4_ADDR(&ip_info.ip, 192, 168, 1, 50);      // IP deseada
+        IP4_ADDR(&ip_info.gw, 192, 168, 1, 1);        // Gateway
+        IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0); // Máscara
+        esp_netif_dhcpc_stop(netif);                  // Detener DHCP
+        esp_netif_set_ip_info(netif, &ip_info);       // Aplicar IP
+    }
+    
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&cfg);
     
@@ -234,6 +255,8 @@ void app_main(void)
     
     gpio_set_direction(LED_PIN, GPIO_MODE_OUTPUT);
     gpio_set_level(LED_PIN, 0);
+    gpio_set_direction(LED_PIN4, GPIO_MODE_OUTPUT);
+    gpio_set_level(LED_PIN4, 0);
 
     gpio_set_direction(INPUT_DIG_1, GPIO_MODE_INPUT);
     gpio_set_pull_mode(INPUT_DIG_1, GPIO_PULLDOWN_ONLY);
