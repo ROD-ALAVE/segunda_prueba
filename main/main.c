@@ -1,482 +1,178 @@
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "freertos/idf_additions.h"
 #include "portmacro.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include "driver/gpio.h"
+#include "driver/adc.h"
+#include "driver/dac.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "nvs_flash.h"
 #include "esp_http_server.h"
 
-#define LED_PIN         2
-#define BLINK_DELAY_MS  2000
-#define WIFI_SSID       "Familia Tola"
-#define WIFI_PASSWORD   "78312bea"
+// --- Definición de pines ---
+#define LED_PIN             2
+#define INPUT_DIG_1         12
+#define INPUT_DIG_2         13
+#define INPUT_ANALOG        34
+#define OUTPUT_ANALOG       25
 
-const char* index_html = 
-"<!DOCTYPE html>"
-"<html lang=\"es\">"
-"<head>"
-"    <meta charset=\"UTF-8\">"
-"    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=yes\">"
-"    <title>ESP32 IoT Controller</title>"
-"    <style>"
-"        * {"
-"            margin: 0;"
-"            padding: 0;"
-"            box-sizing: border-box;"
-"        }"
-""
-"        body {"
-"            background: linear-gradient(135deg, #0a0e1a 0%, #0f1322 100%);"
-"            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;"
-"            padding: 20px;"
-"            min-height: 100vh;"
-"            color: #e0e0e0;"
-"        }"
-""
-"        .container {"
-"            max-width: 1200px;"
-"            margin: 0 auto;"
-"        }"
-""
-"        h1 {"
-"            text-align: center;"
-"            color: #00e5ff;"
-"            margin-bottom: 10px;"
-"            font-size: 2.5rem;"
-"            text-shadow: 0 0 10px rgba(0,229,255,0.3);"
-"        }"
-""
-"        .subtitle {"
-"            text-align: center;"
-"            color: #888;"
-"            margin-bottom: 40px;"
-"            font-size: 0.9rem;"
-"        }"
-""
-"        .ip-badge {"
-"            text-align: center;"
-"            margin-bottom: 30px;"
-"            padding: 10px;"
-"            background: rgba(0,229,255,0.1);"
-"            border-radius: 10px;"
-"            display: inline-block;"
-"            width: auto;"
-"            margin-left: auto;"
-"            margin-right: auto;"
-"            font-family: monospace;"
-"            font-size: 1.1rem;"
-"            border: 1px solid rgba(0,229,255,0.3);"
-"        }"
-""
-"        .grid {"
-"            display: grid;"
-"            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));"
-"            gap: 25px;"
-"            margin-top: 20px;"
-"        }"
-""
-"        .card {"
-"            background: rgba(20, 25, 40, 0.8);"
-"            backdrop-filter: blur(10px);"
-"            border-radius: 20px;"
-"            padding: 25px;"
-"            border: 1px solid rgba(255,255,255,0.1);"
-"            transition: transform 0.3s, box-shadow 0.3s;"
-"        }"
-""
-"        .card:hover {"
-"            transform: translateY(-5px);"
-"            box-shadow: 0 10px 30px rgba(0,0,0,0.5);"
-"            border-color: rgba(0,229,255,0.3);"
-"        }"
-""
-"        .card-title {"
-"            font-size: 1.3rem;"
-"            margin-bottom: 20px;"
-"            padding-bottom: 10px;"
-"            border-bottom: 2px solid rgba(0,229,255,0.5);"
-"            display: flex;"
-"            align-items: center;"
-"            gap: 10px;"
-"        }"
-""
-"        .card-title .icon {"
-"            font-size: 1.5rem;"
-"        }"
-""
-"        .control-group {"
-"            margin-bottom: 20px;"
-"        }"
-""
-"        .control-label {"
-"            display: flex;"
-"            justify-content: space-between;"
-"            margin-bottom: 10px;"
-"            font-size: 0.9rem;"
-"            color: #ccc;"
-"        }"
-""
-"        button {"
-"            width: 100%;"
-"            padding: 12px;"
-"            margin: 8px 0;"
-"            border: none;"
-"            border-radius: 12px;"
-"            font-size: 1rem;"
-"            font-weight: 600;"
-"            cursor: pointer;"
-"            transition: all 0.3s;"
-"            background: #2a2f45;"
-"            color: white;"
-"        }"
-""
-"        button:hover {"
-"            transform: scale(1.02);"
-"            filter: brightness(1.1);"
-"        }"
-""
-"        .btn-on {"
-"            background: linear-gradient(135deg, #00e676, #00c853);"
-"            color: white;"
-"        }"
-""
-"        .btn-off {"
-"            background: linear-gradient(135deg, #ff5252, #d32f2f);"
-"            color: white;"
-"        }"
-""
-"        .status-led {"
-"            display: inline-block;"
-"            width: 12px;"
-"            height: 12px;"
-"            border-radius: 50%;"
-"            margin-left: 10px;"
-"            animation: pulse 1.5s infinite;"
-"        }"
-""
-"        .status-on {"
-"            background: #00e676;"
-"            box-shadow: 0 0 10px #00e676;"
-"        }"
-""
-"        .status-off {"
-"            background: #555;"
-"        }"
-""
-"        @keyframes pulse {"
-"            0% { opacity: 1; }"
-"            50% { opacity: 0.5; }"
-"            100% { opacity: 1; }"
-"        }"
-""
-"        .value-display {"
-"            background: rgba(0,0,0,0.5);"
-"            padding: 10px;"
-"            border-radius: 10px;"
-"            text-align: center;"
-"            font-size: 1.2rem;"
-"            font-weight: bold;"
-"            margin: 10px 0;"
-"            font-family: monospace;"
-"        }"
-""
-"        input[type=\"range\"] {"
-"            width: 100%;"
-"            margin: 10px 0;"
-"            -webkit-appearance: none;"
-"            background: #2a2f45;"
-"            height: 8px;"
-"            border-radius: 5px;"
-"            outline: none;"
-"        }"
-""
-"        input[type=\"range\"]::-webkit-slider-thumb {"
-"            -webkit-appearance: none;"
-"            width: 20px;"
-"            height: 20px;"
-"            border-radius: 50%;"
-"            background: #00e5ff;"
-"            cursor: pointer;"
-"            box-shadow: 0 0 5px #00e5ff;"
-"        }"
-""
-"        .analog-value {"
-"            text-align: center;"
-"            font-size: 1.5rem;"
-"            font-weight: bold;"
-"            color: #00e5ff;"
-"            margin-top: 10px;"
-"        }"
-""
-"        .digital-input {"
-"            background: rgba(0,0,0,0.3);"
-"            padding: 15px;"
-"            border-radius: 15px;"
-"            text-align: center;"
-"            margin-top: 10px;"
-"        }"
-""
-"        .input-high {"
-"            color: #00e676;"
-"            font-weight: bold;"
-"        }"
-""
-"        .input-low {"
-"            color: #ff5252;"
-"            font-weight: bold;"
-"        }"
-""
-"        @media (max-width: 768px) {"
-"            .grid {"
-"                grid-template-columns: 1fr;"
-"            }"
-"            h1 {"
-"                font-size: 1.8rem;"
-"            }"
-"        }"
-"    </style>"
-"</head>"
-"<body>"
-"    <div class=\"container\">"
-"        <h1>🎮 ESP32 IoT Controller</h1>"
-"        <div style=\"text-align: center;\">"
-"            <div class=\"ip-badge\" id=\"ipDisplay\">"
-"                🌐 IP: Conectando..."
-"            </div>"
-"        </div>"
-"        <div class=\"subtitle\">Panel de control industrial | Sistema embebido</div>"
-""
-"        <div class=\"grid\">"
-"            <!-- Salida Digital 1 - LED Pin 2 -->"
-"            <div class=\"card\">"
-"                <div class=\"card-title\">"
-"                    <span class=\"icon\">💡</span>"
-"                    <span>Salida Digital 1</span>"
-"                    <span id=\"led1Status\" class=\"status-led status-off\"></span>"
-"                </div>"
-"                <div class=\"control-group\">"
-"                    <div class=\"control-label\">"
-"                        <span>LED (GPIO 2)</span>"
-"                        <span id=\"led1Text\">APAGADO</span>"
-"                    </div>"
-"                    <button class=\"btn-on\" onclick=\"controlSalida(1, 'on')\">🔛 ENCENDER</button>"
-"                    <button class=\"btn-off\" onclick=\"controlSalida(1, 'off')\">🔴 APAGAR</button>"
-"                </div>"
-"            </div>"
-""
-"            <!-- Salida Digital 2 -->"
-"            <div class=\"card\">"
-"                <div class=\"card-title\">"
-"                    <span class=\"icon\">⚡</span>"
-"                    <span>Salida Digital 2</span>"
-"                    <span id=\"led2Status\" class=\"status-led status-off\"></span>"
-"                </div>"
-"                <div class=\"control-group\">"
-"                    <div class=\"control-label\">"
-"                        <span>Relevador (GPIO 4)</span>"
-"                        <span id=\"led2Text\">APAGADO</span>"
-"                    </div>"
-"                    <button class=\"btn-on\" onclick=\"controlSalida(2, 'on')\">🔛 ACTIVAR</button>"
-"                    <button class=\"btn-off\" onclick=\"controlSalida(2, 'off')\">🔴 DESACTIVAR</button>"
-"                </div>"
-"            </div>"
-""
-"            <!-- Salida Analógica PWM -->"
-"            <div class=\"card\">"
-"                <div class=\"card-title\">"
-"                    <span class=\"icon\">🎛️</span>"
-"                    <span>Salida Analógica (PWM)</span>"
-"                </div>"
-"                <div class=\"control-group\">"
-"                    <div class=\"control-label\">"
-"                        <span>Intensidad LED (GPIO 5)</span>"
-"                        <span id=\"pwmValue\">0%</span>"
-"                    </div>"
-"                    <input type=\"range\" id=\"pwmSlider\" min=\"0\" max=\"255\" value=\"0\" oninput=\"updatePWM(this.value)\">"
-"                    <div class=\"analog-value\" id=\"pwmPercent\">0%</div>"
-"                </div>"
-"            </div>"
-""
-"            <!-- Entrada Digital 1 -->"
-"            <div class=\"card\">"
-"                <div class=\"card-title\">"
-"                    <span class=\"icon\">🔘</span>"
-"                    <span>Entrada Digital 1</span>"
-"                </div>"
-"                <div class=\"digital-input\">"
-"                    <div class=\"control-label\">"
-"                        <span>Sensor (GPIO 12)</span>"
-"                        <span id=\"digital1State\" class=\"input-low\">LECTURA: 0</span>"
-"                    </div>"
-"                    <div id=\"digital1Value\" style=\"font-size: 2rem; margin-top: 10px;\">⚫</div>"
-"                </div>"
-"            </div>"
-""
-"            <!-- Entrada Digital 2 -->"
-"            <div class=\"card\">"
-"                <div class=\"card-title\">"
-"                    <span class=\"icon\">🔘</span>"
-"                    <span>Entrada Digital 2</span>"
-"                </div>"
-"                <div class=\"digital-input\">"
-"                    <div class=\"control-label\">"
-"                        <span>Pulsador (GPIO 13)</span>"
-"                        <span id=\"digital2State\" class=\"input-low\">LECTURA: 0</span>"
-"                    </div>"
-"                    <div id=\"digital2Value\" style=\"font-size: 2rem; margin-top: 10px;\">⚫</div>"
-"                </div>"
-"            </div>"
-""
-"            <!-- Entrada Analógica -->"
-"            <div class=\"card\">"
-"                <div class=\"card-title\">"
-"                    <span class=\"icon\">📊</span>"
-"                    <span>Entrada Analógica</span>"
-"                </div>"
-"                <div class=\"digital-input\">"
-"                    <div class=\"control-label\">"
-"                        <span>Potenciómetro (GPIO 34)</span>"
-"                        <span id=\"analogText\">0</span>"
-"                    </div>"
-"                    <div class=\"value-display\" id=\"analogValue\">0 / 4095</div>"
-"                    <div class=\"analog-value\" id=\"analogPercent\">0%</div>"
-"                </div>"
-"            </div>"
-"        </div>"
-"    </div>"
-""
-"    <script>"
-"        let ip = '192.168.1.100';"
-""
-"        async function obtenerIP() {"
-"            try {"
-"                const response = await fetch('/ip');"
-"                const data = await response.json();"
-"                if (data.ip) {"
-"                    ip = data.ip;"
-"                    document.getElementById('ipDisplay').innerHTML = `🌐 IP: ${ip}`;"
-"                }"
-"            } catch(e) {"
-"                console.log('Usando IP por defecto');"
-"            }"
-"        }"
-""
-"        async function controlSalida(salida, estado) {"
-"            const gpio = salida === 1 ? 2 : 4;"
-"            const value = estado === 'on' ? 1 : 0;"
-"            "
-"            try {"
-"                const response = await fetch(`/control?gpio=${gpio}&value=${value}`);"
-"                const data = await response.json();"
-"                "
-"                if (data.success) {"
-"                    actualizarUI(salida, value);"
-"                }"
-"            } catch(e) {"
-"                actualizarUI(salida, value);"
-"                console.error('Error:', e);"
-"            }"
-"        }"
-""
-"        function actualizarUI(salida, value) {"
-"            const isOn = value === 1;"
-"            const statusSpan = document.getElementById(`led${salida}Status`);"
-"            const textSpan = document.getElementById(`led${salida}Text`);"
-"            const estadoTexto = isOn ? 'ENCENDIDO' : 'APAGADO';"
-"            "
-"            if (statusSpan) {"
-"                statusSpan.className = `status-led ${isOn ? 'status-on' : 'status-off'}`;"
-"            }"
-"            if (textSpan) {"
-"                textSpan.textContent = estadoTexto;"
-"            }"
-"        }"
-""
-"        async function updatePWM(value) {"
-"            document.getElementById('pwmSlider').value = value;"
-"            document.getElementById('pwmValue').innerHTML = `${Math.round(value/255*100)}%`;"
-"            document.getElementById('pwmPercent').innerHTML = `${Math.round(value/255*100)}%`;"
-"            "
-"            try {"
-"                await fetch(`/pwm?value=${value}`);"
-"            } catch(e) {"
-"                console.error('Error PWM:', e);"
-"            }"
-"        }"
-""
-"        async function leerEntradas() {"
-"            try {"
-"                const response = await fetch('/digital');"
-"                const data = await response.json();"
-"                "
-"                const val1 = data.gpio12 || 0;"
-"                document.getElementById('digital1State').innerHTML = `LECTURA: ${val1}`;"
-"                document.getElementById('digital1Value').innerHTML = val1 === 1 ? '🔵 ALTO' : '⚫ BAJO';"
-"                document.getElementById('digital1State').className = val1 === 1 ? 'input-high' : 'input-low';"
-"                "
-"                const val2 = data.gpio13 || 0;"
-"                document.getElementById('digital2State').innerHTML = `LECTURA: ${val2}`;"
-"                document.getElementById('digital2Value').innerHTML = val2 === 1 ? '🔵 ALTO' : '⚫ BAJO';"
-"                document.getElementById('digital2State').className = val2 === 1 ? 'input-high' : 'input-low';"
-"            } catch(e) {"
-"                console.log('Usando simulaci\u00f3n local');"
-"                const val1 = Math.random() > 0.5 ? 1 : 0;"
-"                const val2 = Math.random() > 0.5 ? 1 : 0;"
-"                document.getElementById('digital1State').innerHTML = `LECTURA: ${val1}`;"
-"                document.getElementById('digital1Value').innerHTML = val1 === 1 ? '🔵 ALTO' : '⚫ BAJO';"
-"                document.getElementById('digital2State').innerHTML = `LECTURA: ${val2}`;"
-"                document.getElementById('digital2Value').innerHTML = val2 === 1 ? '🔵 ALTO' : '⚫ BAJO';"
-"            }"
-"        }"
-""
-"        async function leerAnalogico() {"
-"            try {"
-"                const response = await fetch('/analog');"
-"                const data = await response.json();"
-"                const valor = data.value || 0;"
-"                const porcentaje = (valor / 4095 * 100).toFixed(1);"
-"                "
-"                document.getElementById('analogValue').innerHTML = `${valor} / 4095`;"
-"                document.getElementById('analogText').innerHTML = `${valor}`;"
-"                document.getElementById('analogPercent').innerHTML = `${porcentaje}%`;"
-"            } catch(e) {"
-"                const sim = Math.floor(Math.random() * 4096);"
-"                const porc = (sim / 4095 * 100).toFixed(1);"
-"                document.getElementById('analogValue').innerHTML = `${sim} / 4095`;"
-"                document.getElementById('analogText').innerHTML = `${sim}`;"
-"                document.getElementById('analogPercent').innerHTML = `${porc}%`;"
-"            }"
-"        }"
-""
-"        async function actualizarTodo() {"
-"            await obtenerIP();"
-"            await leerEntradas();"
-"            await leerAnalogico();"
-"        }"
-""
-"        setInterval(actualizarTodo, 500);"
-"        actualizarTodo();"
-"        "
-"        document.getElementById('pwmSlider').addEventListener('change', function(e) {"
-"            updatePWM(this.value);"
-"        });"
-"    </script>"
-"</body>"
-"</html>";
+// --- CORRECCIÓN 1: Definir el canal DAC correcto ---
+#define OUTPUT_ANALOG_CHANNEL DAC_CHANNEL_1  // GPIO25 = DAC_CHANNEL_1
+
+#define BLINK_DELAY_MS      2000
+#define WIFI_SSID           "Familia Tola"
+#define WIFI_PASSWORD       "78312bea"
+
+// --- CORRECCIÓN 2: Variable global para el valor del DAC ---
+static int g_dac_value = 0;
+
+// Declaración de archivos web incrustados
+extern const char _binary_index_html_start[];
+extern const char _binary_index_html_end[];
+extern const char _binary_style_css_start[];
+extern const char _binary_style_css_end[];
+extern const char _binary_script_js_start[];
+extern const char _binary_script_js_end[];
+
+// ---------------------------------------------------------
+// HANDLERS
+// ---------------------------------------------------------
 
 static esp_err_t root_get_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "text/html");
-    httpd_resp_send(req, index_html, strlen(index_html));
+    httpd_resp_send(req, _binary_index_html_start,
+                    _binary_index_html_end - _binary_index_html_start);
     return ESP_OK;
 }
+
+static esp_err_t css_get_handler(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "text/css");
+    httpd_resp_send(req, _binary_style_css_start,
+                    _binary_style_css_end - _binary_style_css_start);
+    return ESP_OK;
+}
+
+static esp_err_t js_get_handler(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "application/javascript");
+    httpd_resp_send(req, _binary_script_js_start,
+                    _binary_script_js_end - _binary_script_js_start);
+    return ESP_OK;
+}
+
+static esp_err_t get_readings_handler(httpd_req_t *req)
+{
+    int dig1 = gpio_get_level(INPUT_DIG_1);
+    int dig2 = gpio_get_level(INPUT_DIG_2);
+    int analog_val = adc1_get_raw(ADC1_CHANNEL_6);
+    
+    // --- CORRECCIÓN 2: Usar la variable global ---
+    int dac_val = g_dac_value;
+
+    char resp[256];
+    snprintf(resp, sizeof(resp),
+             "{\"dig1\": %d, \"dig2\": %d, \"analog\": %d, \"dac\": %d}",
+             dig1, dig2, analog_val, dac_val);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, resp);
+    return ESP_OK;
+}
+
+static esp_err_t control_handler(httpd_req_t *req)
+{
+    char query[128];
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        
+        char param[32];
+        // Controlar LED
+        if (httpd_query_key_value(query, "led", param, sizeof(param)) == ESP_OK) {
+            int led_state = atoi(param);
+            gpio_set_level(LED_PIN, led_state ? 1 : 0);
+            httpd_resp_sendstr(req, "LED actualizado");
+            return ESP_OK;
+        }
+
+        // Controlar DAC
+        if (httpd_query_key_value(query, "dac", param, sizeof(param)) == ESP_OK) {
+            int dac_value = atoi(param);
+            if (dac_value < 0) dac_value = 0;
+            if (dac_value > 255) dac_value = 255;
+            
+            // --- CORRECCIÓN 1: Usar el canal, no el GPIO ---
+            dac_output_voltage(OUTPUT_ANALOG_CHANNEL, dac_value);
+            
+            // --- CORRECCIÓN 2: Guardar el valor en la variable global ---
+            g_dac_value = dac_value;
+            
+            httpd_resp_sendstr(req, "DAC actualizado");
+            return ESP_OK;
+        }
+    }
+    
+    httpd_resp_send_404(req);
+    return ESP_OK;
+}
+
+static esp_err_t ip_get_handler(httpd_req_t *req)
+{
+    esp_netif_ip_info_t ip_info;
+    esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"), &ip_info);
+    char ip_str[16];
+    snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&ip_info.ip));
+
+    char resp[64];
+    snprintf(resp, sizeof(resp), "{\"ip\": \"%s\"}", ip_str);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, resp);
+    return ESP_OK;
+}
+
+// ---------------------------------------------------------
+// RUTAS
+// ---------------------------------------------------------
 
 static const httpd_uri_t root = {
     .uri       = "/",
     .method    = HTTP_GET,
     .handler   = root_get_handler
+};
+
+static const httpd_uri_t css = {
+    .uri       = "/style.css",
+    .method    = HTTP_GET,
+    .handler   = css_get_handler
+};
+
+static const httpd_uri_t js = {
+    .uri       = "/script.js",
+    .method    = HTTP_GET,
+    .handler   = js_get_handler
+};
+
+static const httpd_uri_t readings = {
+    .uri       = "/analog",
+    .method    = HTTP_GET,
+    .handler   = get_readings_handler
+};
+
+static const httpd_uri_t control = {
+    .uri       = "/control",
+    .method    = HTTP_GET,
+    .handler   = control_handler
+};
+
+static const httpd_uri_t ip_uri = {
+    .uri       = "/ip",
+    .method    = HTTP_GET,
+    .handler   = ip_get_handler
 };
 
 static void start_webserver(void)
@@ -486,7 +182,12 @@ static void start_webserver(void)
 
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_register_uri_handler(server, &root);
-        printf("Servidor web iniciado\n");
+        httpd_register_uri_handler(server, &css);
+        httpd_register_uri_handler(server, &js);
+        httpd_register_uri_handler(server, &readings);
+        httpd_register_uri_handler(server, &control);
+        httpd_register_uri_handler(server, &ip_uri);
+        printf("Servidor web iniciado correctamente\n");
     }
 }
 
@@ -516,26 +217,42 @@ void app_main(void)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&cfg);
     
-    // CORREGIDO: Registrar ambos eventos
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL);
     
-    wifi_config_t wifi_config = { .sta = { .ssid = WIFI_SSID, .password = WIFI_PASSWORD } };
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = WIFI_SSID,
+            .password = WIFI_PASSWORD
+        }
+    };
     esp_wifi_set_mode(WIFI_MODE_STA);
     esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
     esp_wifi_start();
+
+    // --- CONFIGURACIÓN DE PINES ---
     
     gpio_set_direction(LED_PIN, GPIO_MODE_OUTPUT);
-    
+    gpio_set_level(LED_PIN, 0);
+
+    gpio_set_direction(INPUT_DIG_1, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(INPUT_DIG_1, GPIO_PULLDOWN_ONLY);
+    gpio_set_direction(INPUT_DIG_2, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(INPUT_DIG_2, GPIO_PULLDOWN_ONLY);
+
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_config_channel_atten(ADC1_CHANNEL_6, ADC_ATTEN_DB_12);
+
+    // --- CORRECCIÓN 1: Usar el canal DAC correcto ---
+    dac_output_enable(OUTPUT_ANALOG_CHANNEL);
+    dac_output_voltage(OUTPUT_ANALOG_CHANNEL, 0);
+
+    // --- BUCLE PRINCIPAL ---
     bool led_state = false;
     
     while (1) {
         led_state = !led_state;
-        if (led_state) {
-            gpio_set_level(LED_PIN, 1);
-        } else {
-            gpio_set_level(LED_PIN, 0);
-        }
+        gpio_set_level(LED_PIN, led_state ? 1 : 0);
         vTaskDelay(BLINK_DELAY_MS / portTICK_PERIOD_MS);
     }
 }

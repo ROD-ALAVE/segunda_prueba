@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "app-template",
-    "project_version":    "1",
+    "project_version":    "15f0c28-dirty",
     "project_path":       "C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba",
     "idf_path":           "C:/Espressif/frameworks/esp-idf-v5.5.2-2",
     "build_dir":          "C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba/build",
@@ -1225,8 +1225,8 @@
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "file": "C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba/build/esp-idf/main/libmain.a",
-            "sources": [ "C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba/main/main.c" ],
-            "include_dirs": []
+            "sources": [ "C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba/main/main.c", "C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba/build/index.html.S", "C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba/build/style.css.S", "C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba/build/script.js.S" ],
+            "include_dirs": [ "." ]
         },
         "mbedtls": {
             "alias": "idf::mbedtls",
@@ -2911,7 +2911,7 @@
             "priv_reqs": [],
             "managed_reqs": [],
             "managed_priv_reqs": [],
-            "include_dirs": []
+            "include_dirs": [ "." ]
         }
     },
     "debug_prefix_map_gdbinit": "",

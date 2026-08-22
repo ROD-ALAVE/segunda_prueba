@@ -1,4 +1,1 @@
-cmake --build . --target all
-no such file or directory
-CMake Error: Generator: execution of make failed. Make command was:  -f Makefile all
-Build complete (0 errors, 0 warnings): C:\Users\ALAVEPC\Documents\proy_Micros\segunda_prueba\main\build\default
+Build not configured correctly

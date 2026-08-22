@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>ESP32 IoT Controller</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/script.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎮 ESP32 IoT Controller</h1>
+        <div style="text-align: center;">
+            <div class="ip-badge" id="ipDisplay">
+                🌐 IP: Conectando...
+            </div>
+        </div>
+        <div class="subtitle">Panel de control industrial | Sistema embebido</div>
+
+        <div class="grid">
+            <!-- Salida Digital 1 - LED Pin 2 -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">💡</span>
+                    <span>Salida Digital 1</span>
+                    <span id="led1Status" class="status-led status-off"></span>
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>LED (GPIO 2)</span>
+                        <span id="led1Text">APAGADO</span>
+                    </div>
+                    <button class="btn-on" onclick="controlSalida(1, 'on')">🔛 ENCENDER</button>
+                    <button class="btn-off" onclick="controlSalida(1, 'off')">🔴 APAGAR</button>
+                </div>
+            </div>
+
+            <!-- Salida Digital 2 -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">⚡</span>
+                    <span>Salida Digital 2</span>
+                    <span id="led2Status" class="status-led status-off"></span>
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Relevador (GPIO 4)</span>
+                        <span id="led2Text">APAGADO</span>
+                    </div>
+                    <button class="btn-on" onclick="controlSalida(2, 'on')">🔛 ACTIVAR</button>
+                    <button class="btn-off" onclick="controlSalida(2, 'off')">🔴 DESACTIVAR</button>
+                </div>
+            </div>
+
+            <!-- Salida Analógica PWM -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">🎛️</span>
+                    <span>Salida Analógica (PWM)</span>
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Intensidad LED (GPIO 5)</span>
+                        <span id="pwmValue">0%</span>
+                    </div>
+                    <input type="range" id="pwmSlider" min="0" max="255" value="0" oninput="updatePWM(this.value)">
+                    <div class="analog-value" id="pwmPercent">0%</div>
+                </div>
+            </div>
+
+            <!-- Entrada Digital 1 -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">🔘</span>
+                    <span>Entrada Digital 1</span>
+                </div>
+                <div class="digital-input">
+                    <div class="control-label">
+                        <span>Sensor (GPIO 12)</span>
+                        <span id="digital1State" class="input-low">LECTURA: 0</span>
+                    </div>
+                    <div id="digital1Value" style="font-size: 2rem; margin-top: 10px;">⚫</div>
+                </div>
+            </div>
+
+            <!-- Entrada Digital 2 -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">🔘</span>
+                    <span>Entrada Digital 2</span>
+                </div>
+                <div class="digital-input">
+                    <div class="control-label">
+                        <span>Pulsador (GPIO 13)</span>
+                        <span id="digital2State" class="input-low">LECTURA: 0</span>
+                    </div>
+                    <div id="digital2Value" style="font-size: 2rem; margin-top: 10px;">⚫</div>
+                </div>
+            </div>
+
+            <!-- Entrada Analógica -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">📊</span>
+                    <span>Entrada Analógica</span>
+                </div>
+                <div class="digital-input">
+                    <div class="control-label">
+                        <span>Potenciómetro (GPIO 34)</span>
+                        <span id="analogText">0</span>
+                    </div>
+                    <div class="value-display" id="analogValue">0 / 4095</div>
+                    <div class="analog-value" id="analogPercent">0%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
