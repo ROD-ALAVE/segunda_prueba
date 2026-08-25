@@ -1,4 +1,4 @@
-let ip = '192.168.1.100'; // IP por defecto
+let ip = '192.168.0.100'; // IP por defecto
 
 // Obtener IP del ESP32
 async function obtenerIP() {
@@ -58,8 +58,8 @@ function actualizarUI(salida, value) {
     }
 }
 
-// Controlar Salida Analógica (DAC en GPIO 25)
-async function updatePWM(value) {
+// Controlar salida analógica DAC en GPIO 25
+async function updateDAC(value) {
     document.getElementById('pwmSlider').value = value;
     document.getElementById('pwmValue').innerHTML = `${Math.round(value / 255 * 100)}%`;
     document.getElementById('pwmPercent').innerHTML = `${Math.round(value / 255 * 100)}%`;
@@ -67,7 +67,19 @@ async function updatePWM(value) {
     try {
         await fetch(`/control?dac=${value}`);
     } catch (e) {
-        console.error('Error DAC/PWM:', e);
+        console.error('Error DAC:', e);
+    }
+}
+
+// Controlar salida PWM en GPIO 26
+async function updatePWM(value) {
+    document.getElementById('pwmOutputSlider').value = value;
+    document.getElementById('pwmOutputValue').innerHTML = `${Math.round(value / 255 * 100)}%`;
+
+    try {
+        await fetch(`/control?pwm=${value}`);
+    } catch (e) {
+        console.error('Error PWM:', e);
     }
 }
 
@@ -95,6 +107,13 @@ async function leerDatos() {
         document.getElementById('analogValue').innerHTML = `${valor} / 4095`;
         document.getElementById('analogText').innerHTML = `${valor}`;
         document.getElementById('analogPercent').innerHTML = `${porcentaje}%`;
+
+        // Segunda entrada analógica (GPIO 35)
+        const valor2 = data.analog2 || 0;
+        const porcentaje2 = (valor2 / 4095 * 100).toFixed(1);
+        document.getElementById('analog2Value').innerHTML = `${valor2} / 4095`;
+        document.getElementById('analog2Text').innerHTML = `${valor2}`;
+        document.getElementById('analog2Percent').innerHTML = `${porcentaje2}%`;
     } catch (e) {
         console.log('Error leyendo /analog:', e);
     }
@@ -114,5 +133,9 @@ actualizarTodo();
 
 // Para la salida PWM (DAC), asegurar que se envía al soltar el slider
 document.getElementById('pwmSlider').addEventListener('change', function (e) {
+    updateDAC(this.value);
+});
+
+document.getElementById('pwmOutputSlider').addEventListener('change', function (e) {
     updatePWM(this.value);
 });

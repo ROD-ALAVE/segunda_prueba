@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "app-template",
-    "project_version":    "64e9c5e-dirty",
+    "project_version":    "d73d2a5-dirty",
     "project_path":       "C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba",
     "idf_path":           "C:/Espressif/frameworks/esp-idf-v5.5.2-2",
     "build_dir":          "C:/Users/ALAVEPC/Documents/proy_Micros/segunda_prueba/build",

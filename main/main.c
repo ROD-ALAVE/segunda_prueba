@@ -8,6 +8,7 @@
 #include "driver/gpio.h"
 #include "driver/adc.h"
 #include "driver/dac.h"
+#include "driver/ledc.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "nvs_flash.h"
@@ -20,17 +21,25 @@
 #define INPUT_DIG_1         12
 #define INPUT_DIG_2         13
 #define INPUT_ANALOG        34
+#define INPUT_ANALOG_2      35
 #define OUTPUT_ANALOG       25
+#define OUTPUT_PWM          26
 
 // --- CORRECCIÓN 1: Definir el canal DAC correcto ---
 #define OUTPUT_ANALOG_CHANNEL DAC_CHANNEL_1  // GPIO25 = DAC_CHANNEL_1
+#define PWM_CHANNEL          LEDC_CHANNEL_0
+#define PWM_TIMER            LEDC_TIMER_0
+#define PWM_FREQUENCY        5000
+#define PWM_RESOLUTION       LEDC_TIMER_8_BIT
 
 #define BLINK_DELAY_MS      2000
-#define WIFI_SSID           "Familia Tola"
-#define WIFI_PASSWORD       "78312bea"
+#define WIFI_SSID           "*****"
+#define WIFI_PASSWORD       "*****"
+
 
 // --- CORRECCIÓN 2: Variable global para el valor del DAC ---
 static int g_dac_value = 100;
+static int g_pwm_value = 0;
 
 // Declaración de archivos web incrustados
 extern const char _binary_index_html_start[];
@@ -73,14 +82,16 @@ static esp_err_t get_readings_handler(httpd_req_t *req)
     int dig1 = gpio_get_level(INPUT_DIG_1);
     int dig2 = gpio_get_level(INPUT_DIG_2);
     int analog_val = adc1_get_raw(ADC1_CHANNEL_6);
+    int analog_val_2 = adc1_get_raw(ADC1_CHANNEL_7);
     
     // --- CORRECCIÓN 2: Usar la variable global ---
     int dac_val = g_dac_value;
+    int pwm_val = g_pwm_value;
 
     char resp[256];
     snprintf(resp, sizeof(resp),
-             "{\"dig1\": %d, \"dig2\": %d, \"analog\": %d, \"dac\": %d}",
-             dig1, dig2, analog_val, dac_val);
+             "{\"dig1\": %d, \"dig2\": %d, \"analog\": %d, \"analog2\": %d, \"dac\": %d, \"pwm\": %d}",
+             dig1, dig2, analog_val, analog_val_2, dac_val, pwm_val);
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, resp);
@@ -121,6 +132,20 @@ static esp_err_t control_handler(httpd_req_t *req)
             g_dac_value = dac_value;
             
             httpd_resp_sendstr(req, "DAC actualizado");
+            return ESP_OK;
+        }
+
+        // Controlar PWM
+        if (httpd_query_key_value(query, "pwm", param, sizeof(param)) == ESP_OK) {
+            int pwm_value = atoi(param);
+            if (pwm_value < 0) pwm_value = 0;
+            if (pwm_value > 255) pwm_value = 255;
+
+            ledc_set_duty(LEDC_LOW_SPEED_MODE, PWM_CHANNEL, pwm_value);
+            ledc_update_duty(LEDC_LOW_SPEED_MODE, PWM_CHANNEL);
+            g_pwm_value = pwm_value;
+
+            httpd_resp_sendstr(req, "PWM actualizado");
             return ESP_OK;
         }
     }
@@ -228,8 +253,8 @@ void app_main(void)
     esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     if (netif) {
         esp_netif_ip_info_t ip_info;
-        IP4_ADDR(&ip_info.ip, 192, 168, 1, 50);      // IP deseada
-        IP4_ADDR(&ip_info.gw, 192, 168, 1, 1);        // Gateway
+        IP4_ADDR(&ip_info.ip, 192, 168, 0, 50);      // IP deseada
+        IP4_ADDR(&ip_info.gw, 192, 168, 0, 1);        // Gateway
         IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0); // Máscara
         esp_netif_dhcpc_stop(netif);                  // Detener DHCP
         esp_netif_set_ip_info(netif, &ip_info);       // Aplicar IP
@@ -265,6 +290,27 @@ void app_main(void)
 
     adc1_config_width(ADC_WIDTH_BIT_12);
     adc1_config_channel_atten(ADC1_CHANNEL_6, ADC_ATTEN_DB_12);
+    adc1_config_channel_atten(ADC1_CHANNEL_7, ADC_ATTEN_DB_12);
+
+    ledc_timer_config_t pwm_timer = {
+        .speed_mode       = LEDC_LOW_SPEED_MODE,
+        .timer_num        = PWM_TIMER,
+        .duty_resolution  = PWM_RESOLUTION,
+        .freq_hz          = PWM_FREQUENCY,
+        .clk_cfg          = LEDC_AUTO_CLK
+    };
+    ledc_timer_config(&pwm_timer);
+
+    ledc_channel_config_t pwm_channel = {
+        .gpio_num       = OUTPUT_PWM,
+        .speed_mode     = LEDC_LOW_SPEED_MODE,
+        .channel        = PWM_CHANNEL,
+        .intr_type      = LEDC_INTR_DISABLE,
+        .timer_sel      = PWM_TIMER,
+        .duty           = 0,
+        .hpoint         = 0
+    };
+    ledc_channel_config(&pwm_channel);
 
     // --- CORRECCIÓN 1: Usar el canal DAC correcto ---
     dac_output_enable(OUTPUT_ANALOG_CHANNEL);

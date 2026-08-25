@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>ESP32 IoT Controller</title>
     <link rel="stylesheet" href="/style.css">
-    <script src="/script.js"></script>
+    <script src="/script.js" defer></script>
 </head>
 
 <body>
@@ -62,11 +62,26 @@
                 </div>
                 <div class="control-group">
                     <div class="control-label">
-                        <span>Voltaje DAC sobre LED (GPIO 5)</span>
+                        <span>Voltaje DAC sobre LED (GPIO 25)</span>
                         <span id="pwmValue">0%</span>
                     </div>
-                    <input type="range" id="pwmSlider" min="100" max="255" value="100" oninput="updatePWM(this.value)">
+                    <input type="range" id="pwmSlider" min="100" max="255" value="100" oninput="updateDAC(this.value)">
                     <div class="analog-value" id="pwmPercent">0%</div>
+                </div>
+            </div>
+
+            <!-- Salida PWM -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">〽️</span>
+                    <span>Salida PWM</span>
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Control de duty cycle (GPIO 26)</span>
+                        <span id="pwmOutputValue">0%</span>
+                    </div>
+                    <input type="range" id="pwmOutputSlider" min="0" max="255" value="0" oninput="updatePWM(this.value)">
                 </div>
             </div>
 
@@ -82,6 +97,22 @@
                         <span id="digital1State" class="input-low">LECTURA: 0</span>
                     </div>
                     <div id="digital1Value" style="font-size: 2rem; margin-top: 10px;">⚫</div>
+                </div>
+            </div>
+
+            <!-- Segunda Entrada Analógica -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">📈</span>
+                    <span>Entrada Analógica 2</span>
+                </div>
+                <div class="digital-input">
+                    <div class="control-label">
+                        <span>Sensor (GPIO 35)</span>
+                        <span id="analog2Text">0</span>
+                    </div>
+                    <div class="value-display" id="analog2Value">0 / 4095</div>
+                    <div class="analog-value" id="analog2Percent">0%</div>
                 </div>
             </div>
 
