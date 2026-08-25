@@ -16,30 +16,28 @@ async function obtenerIP() {
 
 // Controlar salidas digitales (LED en GPIO 2 y GPIO 4)
 async function controlSalida(salida, estado) {
-    // Mapear nombres a GPIOs
     const gpioMap = {
-        'led': 2,    // GPIO2
-        'led4': 4    // GPIO4
+        1: 2,    // GPIO2
+        2: 4     // GPIO4
     };
-    
+
     const gpio = gpioMap[salida];
     if (!gpio) {
         console.error('Salida no válida:', salida);
         return;
     }
-    
+
     const value = estado === 'on' ? 1 : 0;
+    const nombreControl = salida === 1 ? 'led' : 'led4';
 
     try {
-        // El C espera /control?led=1 o /control?led4=1
-        const response = await fetch(`/control?${salida}=${value}`);
+        const response = await fetch(`/control?${nombreControl}=${value}`);
         const text = await response.text();
 
         if (text.includes("actualizado")) {
             actualizarUI(salida, value);
         }
     } catch (e) {
-        // Simulación local si falla la conexión
         actualizarUI(salida, value);
         console.error('Error:', e);
     }
@@ -60,87 +58,61 @@ function actualizarUI(salida, value) {
     }
 }
 
-// Controlar Salida Analógica (DAC en GPIO 25) - Antes llamado PWM
+// Controlar Salida Analógica (DAC en GPIO 25)
 async function updatePWM(value) {
     document.getElementById('pwmSlider').value = value;
     document.getElementById('pwmValue').innerHTML = `${Math.round(value / 255 * 100)}%`;
     document.getElementById('pwmPercent').innerHTML = `${Math.round(value / 255 * 100)}%`;
 
     try {
-        // El C espera /control?dac=0 hasta 255
         await fetch(`/control?dac=${value}`);
     } catch (e) {
         console.error('Error DAC/PWM:', e);
     }
 }
 
-// Leer entradas digitales (GPIO 12 y 13)
-async function leerEntradas() {
+// Leer TODO desde /analog en una sola petición: entradas digitales + entrada analógica
+async function leerDatos() {
     try {
-        // El C tiene la ruta /analog que devuelve dig1, dig2, analog, dac
         const response = await fetch('/analog');
         const data = await response.json();
 
-        // Actualizar entrada 1 (GPIO 12) -> El C lo llama "dig1"
+        // Entrada digital 1 (GPIO 12)
         const val1 = data.dig1 || 0;
         document.getElementById('digital1State').innerHTML = `LECTURA: ${val1}`;
         document.getElementById('digital1Value').innerHTML = val1 === 1 ? '🔵 ALTO' : '⚫ BAJO';
         document.getElementById('digital1State').className = val1 === 1 ? 'input-high' : 'input-low';
 
-        // Actualizar entrada 2 (GPIO 13) -> El C lo llama "dig2"
+        // Entrada digital 2 (GPIO 13)
         const val2 = data.dig2 || 0;
         document.getElementById('digital2State').innerHTML = `LECTURA: ${val2}`;
         document.getElementById('digital2Value').innerHTML = val2 === 1 ? '🔵 ALTO' : '⚫ BAJO';
         document.getElementById('digital2State').className = val2 === 1 ? 'input-high' : 'input-low';
-    } catch (e) {
-        console.log('Usando simulación local');
-        // Simulación para prueba
-        const val1 = Math.random() > 0.5 ? 1 : 0;
-        const val2 = Math.random() > 0.5 ? 1 : 0;
-        document.getElementById('digital1State').innerHTML = `LECTURA: ${val1}`;
-        document.getElementById('digital1Value').innerHTML = val1 === 1 ? '🔵 ALTO' : '⚫ BAJO';
-        document.getElementById('digital2State').innerHTML = `LECTURA: ${val2}`;
-        document.getElementById('digital2Value').innerHTML = val2 === 1 ? '🔵 ALTO' : '⚫ BAJO';
-    }
-}
 
-// Leer entrada analógica (GPIO 34)
-async function leerAnalogico() {
-    try {
-        // El C responde en /analog con un JSON que contiene "analog"
-        const response = await fetch('/analog');
-        const data = await response.json();
+        // Entrada analógica (GPIO 34)
         const valor = data.analog || 0;
         const porcentaje = (valor / 4095 * 100).toFixed(1);
-
         document.getElementById('analogValue').innerHTML = `${valor} / 4095`;
         document.getElementById('analogText').innerHTML = `${valor}`;
         document.getElementById('analogPercent').innerHTML = `${porcentaje}%`;
     } catch (e) {
-        // Simulación
-        const sim = Math.floor(Math.random() * 4096);
-        const porc = (sim / 4095 * 100).toFixed(1);
-        document.getElementById('analogValue').innerHTML = `${sim} / 4095`;
-        document.getElementById('analogText').innerHTML = `${sim}`;
-        document.getElementById('analogPercent').innerHTML = `${porc}%`;
+        console.log('Error leyendo /analog:', e);
     }
 }
 
-// Actualizar todos los datos
+// Actualizar todos los datos (una sola petición por ciclo)
 async function actualizarTodo() {
-    await obtenerIP();
-    await leerEntradas();
-    await leerAnalogico();
+    await leerDatos();
 }
 
-// Auto-actualización cada 500ms
-setInterval(actualizarTodo, 500);
+// Auto-actualización cada 1000ms
+setInterval(actualizarTodo, 1000);
 
 // Inicializar
+obtenerIP();
 actualizarTodo();
 
 // Para la salida PWM (DAC), asegurar que se envía al soltar el slider
-let timeoutPWM;
 document.getElementById('pwmSlider').addEventListener('change', function (e) {
     updatePWM(this.value);
 });

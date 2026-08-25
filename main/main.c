@@ -30,7 +30,7 @@
 #define WIFI_PASSWORD       "78312bea"
 
 // --- CORRECCIÓN 2: Variable global para el valor del DAC ---
-static int g_dac_value = 0;
+static int g_dac_value = 100;
 
 // Declaración de archivos web incrustados
 extern const char _binary_index_html_start[];
@@ -111,7 +111,7 @@ static esp_err_t control_handler(httpd_req_t *req)
         // Controlar DAC
         if (httpd_query_key_value(query, "dac", param, sizeof(param)) == ESP_OK) {
             int dac_value = atoi(param);
-            if (dac_value < 0) dac_value = 0;
+            if (dac_value < 100) dac_value = 100;
             if (dac_value > 255) dac_value = 255;
             
             // --- CORRECCIÓN 1: Usar el canal, no el GPIO ---
@@ -268,14 +268,14 @@ void app_main(void)
 
     // --- CORRECCIÓN 1: Usar el canal DAC correcto ---
     dac_output_enable(OUTPUT_ANALOG_CHANNEL);
-    dac_output_voltage(OUTPUT_ANALOG_CHANNEL, 0);
+    dac_output_voltage(OUTPUT_ANALOG_CHANNEL, 100);
 
     // --- BUCLE PRINCIPAL ---
     bool led_state = false;
     
     while (1) {
-        led_state = !led_state;
-        gpio_set_level(LED_PIN, led_state ? 1 : 0);
+        //led_state = !led_state;
+        //gpio_set_level(LED_PIN, led_state ? 1 : 0);
         vTaskDelay(BLINK_DELAY_MS / portTICK_PERIOD_MS);
     }
 }

@@ -58,14 +58,14 @@
             <div class="card">
                 <div class="card-title">
                     <span class="icon">🎛️</span>
-                    <span>Salida Analógica (PWM)</span>
+                    <span>Salida Analógica (DAC)</span>
                 </div>
                 <div class="control-group">
                     <div class="control-label">
-                        <span>Intensidad LED (GPIO 5)</span>
+                        <span>Voltaje DAC sobre LED (GPIO 5)</span>
                         <span id="pwmValue">0%</span>
                     </div>
-                    <input type="range" id="pwmSlider" min="0" max="255" value="0" oninput="updatePWM(this.value)">
+                    <input type="range" id="pwmSlider" min="100" max="255" value="100" oninput="updatePWM(this.value)">
                     <div class="analog-value" id="pwmPercent">0%</div>
                 </div>
             </div>
