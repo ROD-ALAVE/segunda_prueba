@@ -33,9 +33,8 @@
 #define PWM_RESOLUTION       LEDC_TIMER_8_BIT
 
 #define BLINK_DELAY_MS      2000
-#define WIFI_SSID           "*****"
-#define WIFI_PASSWORD       "*****"
-
+ #define WIFI_SSID           "IoT-Riego2"
+ #define WIFI_PASSWORD       "51548858"
 
 // --- CORRECCIÓN 2: Variable global para el valor del DAC ---
 static int g_dac_value = 100;
@@ -253,8 +252,8 @@ void app_main(void)
     esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     if (netif) {
         esp_netif_ip_info_t ip_info;
-        IP4_ADDR(&ip_info.ip, 192, 168, 0, 50);      // IP deseada
-        IP4_ADDR(&ip_info.gw, 192, 168, 0, 1);        // Gateway
+        IP4_ADDR(&ip_info.ip, 10, 201, 252, 50);      // IP deseada 10.201.252.
+        IP4_ADDR(&ip_info.gw, 10, 201, 252, 150);        // Gateway
         IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0); // Máscara
         esp_netif_dhcpc_stop(netif);                  // Detener DHCP
         esp_netif_set_ip_info(netif, &ip_info);       // Aplicar IP
